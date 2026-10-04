@@ -273,6 +273,7 @@ function moveEnt(e,dt){
 function solidAt(x,y){for(const b of L.solids)if(x>=b.x&&x<b.x+b.w&&y>=b.y)return true;return false}
 function floorAt(x,y){if(solidAt(x,y))return true;for(const b of L.plats)if(x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+8)return true;return false}
 function groundAhead(e){return floorAt(e.face>0?e.x+e.w+2:e.x-2,e.y+e.h+4)}
+function canFace(e,f){return !e.onGround||floorAt(f>0?e.x+e.w+6:e.x-6,e.y+e.h+4)}
 
 /* ---------- fx ---------- */
 function shake(a,t){shakeA=Math.max(shakeA,a);shakeT=Math.max(shakeT,t||.2)}
@@ -333,14 +334,17 @@ function updEnemy(e,dt){
   if(e.kb>0){e.kb-=dt;if(e.fly){e.vx*=.9;e.vy*=.9}}
   else switch(e.ai){
     case 'walk':
-      if(adx<170&&sameLvl)e.face=Math.sign(dx)||e.face;
-      if(e.onGround&&!groundAhead(e))e.face*=-1;e.vx=e.face*e.sp;break;
+      e.turnT=(e.turnT||0)-dt;
+      if(adx<170&&sameLvl&&e.turnT<=0&&canFace(e,Math.sign(dx)||e.face))e.face=Math.sign(dx)||e.face;
+      if(e.onGround&&!groundAhead(e)){e.face*=-1;e.turnT=R2(1.2,2)}
+      e.vx=e.face*e.sp;break;
     case 'charge':
-      if(e.chT>0){e.chT-=dt;e.vx=e.face*e.sp*2.6;if(e.onGround&&!groundAhead(e)){e.chT=0;e.vx=0}}
-      else if(adx<160&&sameLvl&&e.cd<=0){e.face=Math.sign(dx)||e.face;e.chT=.75;e.cd=2.2;e.atk=.3}
-      else{if(e.onGround&&!groundAhead(e))e.face*=-1;e.vx=e.face*e.sp*.5}break;
+      e.turnT=(e.turnT||0)-dt;
+      if(e.chT>0){e.chT-=dt;e.vx=e.face*e.sp*2.6;if(e.onGround&&!groundAhead(e)){e.chT=0;e.face*=-1;e.vx=0;e.turnT=R2(1.2,2)}}
+      else if(adx<160&&sameLvl&&e.cd<=0&&e.turnT<=0&&canFace(e,Math.sign(dx)||e.face)){e.face=Math.sign(dx)||e.face;e.chT=.75;e.cd=2.2;e.atk=.3}
+      else{if(e.onGround&&!groundAhead(e)){e.face*=-1;e.turnT=R2(1.2,2)}e.vx=e.face*e.sp*.5}break;
     case 'hop':
-      if(e.onGround){e.vx*=.8;if(e.cd<=0&&adx<230){e.face=Math.sign(dx)||1;e.vy=-R2(230,310);e.vx=e.face*e.sp*1.6;e.cd=R2(.8,1.6)}}break;
+      if(e.onGround){e.vx*=.8;if(e.cd<=0&&adx<230){e.face=Math.sign(dx)||1;if(!canFace(e,e.face))e.face*=-1;e.vy=-R2(230,310);e.vx=e.face*e.sp*1.6;e.cd=R2(.8,1.6)}}break;
     case 'fly':
       if(e.sw>0){e.sw-=dt;if(e.sw<=0)e.cd=R2(1.5,3)}
       else{e.vx+=((Math.sign(dx)||1)*e.sp*.7-e.vx)*dt*2;e.vy=(e.hy+Math.sin(e.t*3)*12-e.y)*3;e.face=Math.sign(dx)||e.face;
